@@ -2,3 +2,18 @@
     max-height: 250px;
     overflow: scroll;
 }
+
+.type-sketching {
+    color: red;
+    font-style: italic;
+}
+
+.type-painting{
+    color: lightgreen;
+    font-weight: bold;
+}
+
+.type-drawing{
+    color: blue;
+    text-decoration: underline;
+}

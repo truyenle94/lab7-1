@@ -102,7 +102,7 @@
                             <th>Completed?</th>
                         </tr>
                         <!-- TODO display one table row for each activityRecord  -->
-                        <tr v-for="record in activityRecords">
+                        <tr v-for="record in activityRecords" v-bind:class="'type-'+record.type">
                             <td>{{record.when| shortDateFormat}}</td>
                             <td>{{record.howLong|declimit}}</td>
                             <td>{{record.type}}</td>
