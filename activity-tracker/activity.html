@@ -14,7 +14,7 @@
     <div id="app">
 
         <!-- TODO change header text to include name of activity -->
-        <h1 class="text-center">{{activity}}Time Tracker</h1>
+        <h1 class="text-center">{{activity}} Time Tracker</h1>
 
         <div id="add-hours" class="card">
 
@@ -33,13 +33,13 @@
                         <!-- TODO change label message to include name of activity -->
                         <label class="form-label" for="when">When did you do {{activity|lowercase}}?</label>
                         <!-- TODO v-model to app data property -->
-                        <input id="when" class="form-control" type="date" v-model="when">
+                        <input id="when" class="form-control" type="date" v-model.lazy="when">
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="howLong">How long did you practice for?</label>
                         <!-- TODO v-model to app data property -->
-                        <input id="howLong" class="form-control" v-model.number="howLong">
+                        <input id="howLong" class="form-control" v-model.number.lazy="howLong">
                     </div>
 
                     <div class="form-group">
@@ -61,6 +61,18 @@
                         <!-- TODO v-model, v-bind value -->
                         <input id="v1" class="form-check-input" type="radio" v-bind:value="digital" v-model="digitalTraditional">
                         <label class="form-check-label" for="v1">{{digital}}</label>
+                    </div> <br>
+
+                    <div class="form-check">
+                        <input type="checkbox" v-model="completed">
+                        <label class="form-check-label" for="c1">Completed</label>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label class="form-label" for="notes">Notes:</label>
+                        <!-- TODO v-model to app data property -->
+                        <input id="notes" class="form-control" v-model.lazy="notes">
                     </div>
 
                     <div>
@@ -77,7 +89,7 @@
 
             <div class="card-body">
                 <!-- TODO display the number of records  -->
-                <h3> TODO how many records?</h3>
+                <h3> {{totalRecords}} record(s)</h3>
 
                 <div id="records">
                     <table class="table">
@@ -86,13 +98,17 @@
                             <th>How long?</th>
                             <th>Type</th>
                             <th>Digital or traditional?</th>
+                            <th>Notes</th>
+                            <th>Completed?</th>
                         </tr>
                         <!-- TODO display one table row for each activityRecord  -->
                         <tr v-for="record in activityRecords">
                             <td>{{record.when| shortDateFormat}}</td>
-                            <td>{{record.howLong}}</td>
+                            <td>{{record.howLong|declimit}}</td>
                             <td>{{record.type}}</td>
                             <td>{{record.digitalTraditional}}</td>
+                            <td>{{record.notes|charlimit}}</td>
+                            <td>{{record.completed}}</td>
                         </tr>
                     </table>
                 </div>
@@ -105,10 +121,12 @@
 
             <div class="card-body">
                 <!-- TODO use computed property to display total hours -->
-                <p>You have practiced a total of TODO hours, broken down as follows:</p>
+                <p>You have practiced a total of {{totalHours|declimit}} hours, broken down as follows:</p>
                 
                 <!-- TODO computed property to display total for each type  -->
-                <p>TODO total for each type</p>
+                <ul class = "list-group list-group-flush">
+                    <li class="list-group-item" v-for="hours, type in totalHoursByType">{{ type }}: {{ hours|declimit}}</li>
+                </ul>
                 
             </div>
         </div>
@@ -128,7 +146,9 @@
                 types: ['sketching','painting','drawing'],
                 digital: 'digital',
                 traditional: 'traditional',
-                errors:[]
+                notes: '',
+                completed: true,
+                errors:[],
             },
             computed:{
                 whenLocal(){
@@ -136,13 +156,35 @@
                     let timestamp = date.getTime() + (date.getTimezoneOffset()*60*1000)
                     let localDate = new Date(timestamp)
                     return localDate
+                },
+                totalRecords(){
+                    return this.activityRecords.length
+                },
+                totalHours(){
+                    let total = 0
+                    if (this.activityRecords.length>0){
+                        total = this.activityRecords.reduce(function(hoursAccumulator, currentRecord){
+                            return hoursAccumulator + currentRecord.howLong
+                        },0)
+                    }
+                    return total
+                },
+                totalHoursByType(){
+                    let hoursByType = {}
+                    this.types.forEach(type => {
+                        let totalForType = this.activityRecords
+                            .filter(function(record){return record.type === type})
+                            .reduce(function(accumulator, current){ return accumulator + current.howLong},0)
+                        hoursByType[type] = totalForType
+                    })
+                    return hoursByType
                 }
             },
             methods: {
                 submit(){
-                    this.erros =[]
-                    if(this.whenLocal == 'Invalid Date'||this.whenLocal.getTime()> newDate().getTime()){
-                        this.errors.push('Select a valid date, today or in th past')
+                    this.errors =[]
+                    if(this.whenLocal == 'Invalid Date'||this.whenLocal.getTime()> new Date().getTime()){
+                        this.errors.push('Select a valid date, today or in the past')
                     }
 
                     if(typeof (this.howLong) != "number"|| this.howLong <=0){
@@ -154,11 +196,17 @@
                             when: this.whenLocal,
                             howLong: this.howLong,
                             type: this.type,
-                            digitalTraditional: this.digitalTraditional
+                            digitalTraditional: this.digitalTraditional,
+                            notes: this.notes,
+                            completed: this.completed
                         }
+
                         this.activityRecords.push(record)
-                        this.activityRecords.sort(function (r1, r2) { return r1.when.getTime() - r2.when.getTime() })
+                        this.activityRecords.sort(function (r1, r2) {
+                            return r2.when.getTime() - r1.when.getTime()
+                        })
                     }
+
                 }
             },
             filters: {
@@ -167,6 +215,19 @@
                 },
                 shortDateFormat(date) {
                     return new Intl.DateTimeFormat().format(date)
+                },
+                charlimit(text){
+                    limit=''
+                    if(text.length > 40){
+                        limit = text.substring(0,40);
+                    }
+                    else{
+                        limit=text;
+                    }
+                    return limit
+                },
+                declimit(num){
+                    return num.toFixed(2)
                 }
 
             }
